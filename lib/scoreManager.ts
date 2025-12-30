@@ -12,6 +12,7 @@ export interface WordHistory {
 }
 
 const SCORE_STORAGE_KEY = 'undercover_player_scores';
+const LEGACY_SCORE_KEY = 'undercover_scores'; // Legacy key ensure cleanup
 const WORD_HISTORY_KEY = 'undercover_word_history';
 const WORD_HISTORY_LIMIT = 10;
 
@@ -22,11 +23,14 @@ export function getAllPlayerScores(): PlayerScore[] {
     if (typeof window === 'undefined') return [];
 
     const stored = localStorage.getItem(SCORE_STORAGE_KEY);
+    console.log('Loading scores:', stored ? 'Found data' : 'No data');
+
     if (!stored) return [];
 
     try {
         return JSON.parse(stored);
-    } catch {
+    } catch (e) {
+        console.error('Error parsing scores:', e);
         return [];
     }
 }
@@ -70,8 +74,11 @@ export function updatePlayerScores(winnerNames: string[], allPlayerNames: string
  * Reset all player scores
  */
 export function resetPlayerScores(): void {
-    if (typeof window === 'undefined') {
+    if (typeof window !== 'undefined') {
+        console.log('Clearing scores from localStorage...');
         localStorage.removeItem(SCORE_STORAGE_KEY);
+        // Also clear legacy key just in case
+        localStorage.removeItem(LEGACY_SCORE_KEY);
     }
 }
 

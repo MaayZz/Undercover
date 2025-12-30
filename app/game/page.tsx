@@ -1,13 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/Button';
 import PlayerRevealCard from '@/components/PlayerRevealCard';
 import PlayerList from '@/components/PlayerList';
 import MrWhiteGuessModal from '@/components/MrWhiteGuessModal';
 import Card from '@/components/Card';
-import PlayerScoreBoard from '@/components/ScoreBoard';
 import Confetti from '@/components/Confetti';
 import {
     getRandomWordPair,
@@ -15,7 +14,6 @@ import {
     checkVictoryConditions,
     generateTurnOrder,
 } from '@/lib/gameLogic';
-import { getAllPlayerScores, updatePlayerScores, resetPlayerScores, type PlayerScore } from '@/lib/scoreManager';
 import type { Player, GamePhase, WordPair } from '@/types/game';
 
 // Force dynamic rendering to avoid SSR issues with Supabase
@@ -35,17 +33,11 @@ export default function GamePage() {
     const [eliminatedPlayer, setEliminatedPlayer] = useState<Player | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [playerScores, setPlayerScores] = useState<PlayerScore[]>([]);
     const [showConfetti, setShowConfetti] = useState(false);
 
     // Manual role configuration
     const [numUndercovers, setNumUndercovers] = useState(1);
     const [numMrWhites, setNumMrWhites] = useState(0);
-
-    // Load scores on mount
-    useEffect(() => {
-        setPlayerScores(getAllPlayerScores());
-    }, []);
 
     // Setup Phase - Add/Remove Players
     const handleAddPlayer = () => {
@@ -167,25 +159,9 @@ export default function GamePage() {
         if (result.isGameOver) {
             setWinner(result.winner);
 
-            // Update player scores
-            if (result.winner) {
-                const winnerPlayers = updatedPlayers.filter(p => {
-                    if (result.winner === 'civils') {
-                        return p.role === 'civil';
-                    } else {
-                        return p.role === 'undercover' || p.role === 'mrwhite';
-                    }
-                });
-                const winnerNames = winnerPlayers.map(p => p.name);
-                const allNames = updatedPlayers.map(p => p.name);
-
-                const updatedScores = updatePlayerScores(winnerNames, allNames);
-                setPlayerScores(updatedScores);
-
-                // Show confetti for civils win
-                if (result.winner === 'civils') {
-                    setShowConfetti(true);
-                }
+            // Show confetti for civils win
+            if (result.winner === 'civils') {
+                setShowConfetti(true);
             }
 
             setPhase('end');
@@ -205,14 +181,6 @@ export default function GamePage() {
         if (isCorrect) {
             // Mr. White wins! All intrus win
             setWinner('intrus');
-
-            const winnerPlayers = players.filter(p => p.role === 'undercover' || p.role === 'mrwhite');
-            const winnerNames = winnerPlayers.map(p => p.name);
-            const allNames = players.map(p => p.name);
-
-            const updatedScores = updatePlayerScores(winnerNames, allNames);
-            setPlayerScores(updatedScores);
-
             setPhase('end');
         } else {
             // Continue game, eliminate Mr. White
@@ -222,7 +190,7 @@ export default function GamePage() {
         }
     };
 
-    // New game (keep scores and player names for quick rematch)
+    // New game (keep player names for quick rematch)
     const handleNewGame = () => {
         // Save current player names to reuse
         const currentPlayerNames = players.map(p => p.name);
@@ -237,12 +205,6 @@ export default function GamePage() {
         setEliminatedPlayer(null);
         setError(null);
         setShowConfetti(false);
-    };
-
-    // Reset scores
-    const handleResetScores = () => {
-        resetPlayerScores();
-        setPlayerScores([]);
     };
 
     // Restart (go home)
@@ -263,9 +225,6 @@ export default function GamePage() {
                             </h1>
                             <p className="text-white/70">Configurez la partie</p>
                         </div>
-
-                        {/* Player Score Board */}
-                        <PlayerScoreBoard scores={playerScores} onReset={handleResetScores} />
 
                         {error && (
                             <Card className="bg-red-500/20 border-red-500/50">
@@ -495,9 +454,6 @@ export default function GamePage() {
                                 ? 'Les Civils ont gagné !'
                                 : 'Les Intrus ont gagné !'}
                         </h1>
-
-                        {/* Player Score Board */}
-                        <PlayerScoreBoard scores={playerScores} onReset={handleResetScores} />
 
                         <Card>
                             <h2 className="text-xl font-semibold text-white mb-4">
